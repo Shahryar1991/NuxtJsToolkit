@@ -1,0 +1,9 @@
+#set($formatted_name = 'use' + $NAME.substring(0,1).toUpperCase() + $NAME.substring(1))
+import { defineStore } from 'pinia';
+
+export const $formatted_name = defineStore('${NAME}', () => {
+
+    return {
+
+    }
+});

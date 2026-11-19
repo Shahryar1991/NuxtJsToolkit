@@ -1,0 +1,7 @@
+import mongoose, { model, Schema } from "mongoose";
+#set($formatted_name = $NAME.substring(0,1).toUpperCase() + $NAME.substring(1))
+const ${formatted_name}Schema = new Schema({
+
+});
+
+export const ${formatted_name} = mongoose.models.${formatted_name} || model<I${formatted_name}Document>('${formatted_name}', ${formatted_name}Schema)
