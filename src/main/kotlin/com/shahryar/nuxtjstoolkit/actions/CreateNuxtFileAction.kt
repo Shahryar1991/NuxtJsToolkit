@@ -1,7 +1,6 @@
+
 package com.shahryar.nuxtjstoolkit.actions
 
-import com.intellij.ide.fileTemplates.FileTemplateManager
-import com.intellij.ide.fileTemplates.FileTemplateUtil
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -9,28 +8,27 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.ui.Messages
-import com.intellij.psi.PsiDirectory
-import com.intellij.psi.PsiManager
+import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
-import java.util.Properties
-import javax.swing.Icon
+import com.shahryar.nuxtjstoolkit.generators.NuxtTemplateDefinition
 
 class CreateNuxtFileAction(
-    private val templateName: String,
-    private val title: String,
-    icon: Icon? = null
-) : AnAction(title, null, icon), DumbAware {
+    private val template: NuxtTemplateDefinition
+) : AnAction(
+    template.title,
+    null,
+    template.icon
+), DumbAware {
 
     override fun getActionUpdateThread(): ActionUpdateThread {
         return ActionUpdateThread.BGT
     }
 
     override fun update(event: AnActionEvent) {
-        val project = event.project
         val directory = getTargetDirectory(event)
 
         event.presentation.isEnabledAndVisible =
-            project != null &&
+            event.project != null &&
                     directory != null &&
                     directory.isWritable
     }
@@ -39,46 +37,17 @@ class CreateNuxtFileAction(
         val project = event.project ?: return
         val directory = getTargetDirectory(event) ?: return
 
-        val manager = FileTemplateManager.getInstance(project)
-
-        // Find template
-        val template = try {
-            manager.getInternalTemplate(templateName)
-        } catch (e: Exception) {
-            Messages.showErrorDialog(
-                project,
-                "Template '$templateName' was not found.",
-                "Nuxt.js Toolkit"
-            )
-            return
-        }
-
-        // Get extension from the actual template
-        val extension = template.extension
-
-        if (extension.isBlank()) {
-            Messages.showErrorDialog(
-                project,
-                "Template '$templateName' does not have a valid file extension.",
-                "Nuxt.js Toolkit"
-            )
-            return
-        }
-
-        // Ask for file name
         val inputName = Messages.showInputDialog(
             project,
             "Enter file name:",
-            "Create $title",
+            "Create ${template.title}",
             Messages.getQuestionIcon(),
-            "",
+            template.baseName,
             null
         ) ?: return
 
-        var name = inputName.trim()
-
-        // Remove extension if user entered it manually
-        name = name.removeSuffix(".$extension")
+        val name = inputName.trim()
+            .removeSuffix(".${template.extension}")
 
         if (!isValidFileName(name)) {
             Messages.showErrorDialog(
@@ -89,50 +58,54 @@ class CreateNuxtFileAction(
             return
         }
 
-        val fileName = "$name.$extension"
-
-        // Check duplicate
-        if (directory.findFile(fileName) != null) {
+        val outputFileName = try {
+            template.fileName(name)
+        } catch (exception: Exception) {
             Messages.showErrorDialog(
                 project,
-                "File '$fileName' already exists in this directory.",
+                exception.message ?: "Invalid file name.",
                 "Nuxt.js Toolkit"
             )
             return
         }
 
-        // Copy default properties instead of modifying shared properties
-        val properties = Properties().apply {
-            putAll(manager.defaultProperties)
-            setProperty("NAME", name)
+        if (directory.findChild(outputFileName) != null) {
+            Messages.showErrorDialog(
+                project,
+                "File '$outputFileName' already exists.",
+                "Nuxt.js Toolkit"
+            )
+            return
         }
+
+        val content = template.content(name)
 
         try {
             WriteCommandAction.runWriteCommandAction(
                 project,
-                "Create $fileName",
+                "Create $outputFileName",
                 null,
                 Runnable {
-                    // Recheck inside write command to avoid duplicate creation
-                    if (directory.findFile(fileName) != null) {
+                    // Check again inside the write command.
+                    if (directory.findChild(outputFileName) != null) {
                         throw IllegalStateException(
-                            "File '$fileName' already exists."
+                            "File '$outputFileName' already exists."
                         )
                     }
 
-                    FileTemplateUtil.createFromTemplate(
-                        template,
-                        name,
-                        properties,
-                        directory
+                    val newFile = directory.createChildData(
+                        this,
+                        outputFileName
                     )
+
+                    VfsUtil.saveText(newFile, content)
                 }
             )
-
-        } catch (e: Exception) {
+        } catch (exception: Exception) {
             Messages.showErrorDialog(
                 project,
-                e.message ?: "Could not create '$fileName'.",
+                exception.message
+                    ?: "Could not create '$outputFileName'.",
                 "Nuxt.js Toolkit"
             )
         }
@@ -140,38 +113,22 @@ class CreateNuxtFileAction(
 
     private fun getTargetDirectory(
         event: AnActionEvent
-    ): PsiDirectory? {
-
-        val project = event.project ?: return null
-
-        // Collect possible selected files from the current context
-        val candidates = buildList<VirtualFile> {
-
+    ): VirtualFile? {
+        val selectedFile =
             event.getData(CommonDataKeys.VIRTUAL_FILE)
-                ?.let(::add)
+                ?: event.getData(CommonDataKeys.PSI_FILE)?.virtualFile
+                ?: event.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
+                    ?.singleOrNull()
+                ?: return null
 
-            event.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
-                ?.let(::addAll)
-
-            event.getData(CommonDataKeys.PSI_FILE)
-                ?.virtualFile
-                ?.let(::add)
-        }
-
-        val selectedFile = candidates.firstOrNull() ?: return null
-
-        val targetDirectory = if (selectedFile.isDirectory) {
+        return if (selectedFile.isDirectory) {
             selectedFile
         } else {
-            selectedFile.parent ?: return null
+            selectedFile.parent
         }
-
-        return PsiManager.getInstance(project)
-            .findDirectory(targetDirectory)
     }
 
     private fun isValidFileName(name: String): Boolean {
-
         if (name.isBlank()) return false
 
         if (name.startsWith(".") || name.endsWith(".")) {

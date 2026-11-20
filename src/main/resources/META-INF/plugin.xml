@@ -24,29 +24,4 @@
         </group>
     </actions>
 
-    <extensions defaultExtensionNs="com.intellij">
-
-        <internalFileTemplate name="Component.vue"/>
-        <internalFileTemplate name="Composable.ts"/>
-        <internalFileTemplate name="Enum.ts"/>
-        <internalFileTemplate name="Interface Type.ts"/>
-        <internalFileTemplate name="Layout.vue"/>
-        <internalFileTemplate name="Middleware.ts"/>
-        <internalFileTemplate name="Page.vue"/>
-        <internalFileTemplate name="Plugin.ts"/>
-        <internalFileTemplate name="Server API.ts"/>
-        <internalFileTemplate name="Server Document.ts"/>
-        <internalFileTemplate name="Server Middleware.ts"/>
-        <internalFileTemplate name="Server Model.ts"/>
-        <internalFileTemplate name="Server Model Schema.ts"/>
-        <internalFileTemplate name="Server Plugins.ts"/>
-        <internalFileTemplate name="Server Route.ts"/>
-        <internalFileTemplate name="Server Task.ts"/>
-        <internalFileTemplate name="Server WebSocket Handler.ts"/>
-        <internalFileTemplate name="Store.ts"/>
-        <internalFileTemplate name="Type.ts"/>
-        <internalFileTemplate name="Utility.ts"/>
-        <internalFileTemplate name="Translate.ts"/>
-
-    </extensions>
 </idea-plugin>
