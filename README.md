@@ -9,7 +9,8 @@ The submenu provides ready-to-use templates for common Nuxt.js, Vue, Nitro, and 
 
 ## Requirements
 
-- WebStorm 2026.3
+- WebStorm 2026.3 or newer
+- IntelliJ IDEA 2026.2 or newer
 - JDK 21
 - Gradle 9.0 or newer
 - Internet access for the first Gradle sync (to resolve the IDE and plugin dependencies)
